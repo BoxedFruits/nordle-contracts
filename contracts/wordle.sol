@@ -30,31 +30,30 @@ contract TestContract is ERC721, Ownable {
   function guessWord(string memory inputString) public { //Guess the word.
     //require that length of input is == 6
     require(userTries[msg.sender] < tries, "Maxed out guesses for this Nordle");
-    //Changes the metadata, hence changing the icons of the wordle thingy
-    //Only add a new row when after each guess to save on gas
     
+    // If new Nordle starts, reset user's tries and mint new NFT
     if (lastGameTimeStamp[msg.sender] < currentGameTimeStamp) { //Should work if it is a brand new player
-      userTries[msg.sender] = 1;
-      tokenIndex += 1;
-      currentToken[msg.sender] = tokenIndex;
+      userTries[msg.sender] = 0;
+      // tokenIndex += 1;
+      // currentToken[msg.sender] = tokenIndex;
     }
 
     uint8[letters] memory indexStates = checkWord(bytes(inputString));
     lastGameTimeStamp[msg.sender] = block.timestamp;
 
      if(userTries[msg.sender] > 1) { //generate the metadata
-       //Grab and edit the existing NFT's metadata
-       console.log("here");
+        //Grab and edit the existing NFT's metadata
+        console.log("Guess again");
+        tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateMetadata(indexStates)));
      } else { 
-        console.log("there");
         tokenMetadata[currentToken[msg.sender]] = generateMetadata(indexStates);
         userTries[msg.sender] += 1;
         console.log("Generating data for first time");
-        console.log(tokenIndex);
+        // console.log(tokenIndex);
         _mint(msg.sender,tokenIndex);
         tokenIndex += 1;
      }
-
+    console.log(tokenMetadata[currentToken[msg.sender]]);
   }
 
   function checkWord(bytes memory inputChars) public returns (uint8[6] memory) { // Can probably make this more efficient
@@ -62,9 +61,6 @@ contract TestContract is ERC721, Ownable {
     mapping (bytes1 => uint8) storage charCount = secretWordCharCount;// Needed so that can use same character in multiple spots
   
     for(uint16 i = 0; i < letters ; i++) {// Check characters in inputString
-      // console.logBytes1(inputChars[i]);
-      // console.log(charCount[inputChars[i]]);
-
       if (charCount[inputChars[i]] == 0){// Char is not in array. prevent underflow
         
       } else if (secretWordCharArray[i] == inputChars[i]) { // Char is in the correct position
@@ -93,19 +89,13 @@ contract TestContract is ERC721, Ownable {
     nordleNumber += 1;
 
     currentGameTimeStamp = block.timestamp;
-     //could have a boolean to clear mapping
-     //Reset userTries mapping
-     //Reset stored data
   }
 
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     return tokenMetadata[tokenId];
   }
 
-  function generateMetadata(uint8[letters] memory indexStates) private returns (string memory) {
-    //Currently won't be able to add data from previous attemps
-    //Need to have data about # of tries and nordleDay #
-
+  function generateMetadata(uint8[letters] memory indexStates) private pure returns (string memory) {
     string memory rowEmojis;
     string memory metadata;
     string[3] memory parts;
@@ -130,8 +120,8 @@ contract TestContract is ERC721, Ownable {
     string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Emoji #' , '", "description": "Inspired by the Loot (for Adventurers) contract. This is stored completely on-chain. No third party hosting, no rug pulls.", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
     metadata = string(abi.encodePacked('data:application/json;base64,', json));
 
-    console.log(rowEmojis);
-    console.log(metadata);
+    // console.log(rowEmojis);
+    // console.log(metadata);
     return rowEmojis;
   }
 }
