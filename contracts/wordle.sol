@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-// import "@openzeppelin/contracts/utils/Base64.sol";
 import "hardhat/console.sol";
 
 //Nordle
@@ -13,11 +12,15 @@ contract TestContract is ERC721, Ownable {
   bytes secretWordCharArray;
   uint8 private constant letters = 6;
   uint8 private constant tries = 6;
-  uint8 public nordleNumber = 1;
+  uint8 public nordleNumber = 0;
+  uint256 public tokenIndex = 0;
+  uint public currentGameTimeStamp; //!!!! This might be exploitable?
 
-  mapping (bytes1 => uint16) public secretWordCharCount; // () keep count of chars
-  mapping (address => uint16) public userTries; // (address => tries). If not in mapping, tries will be 0
-  mapping (address => string) public tokenMetadata;
+  mapping (bytes1 => uint8) public secretWordCharCount; // Keep count of chars
+  mapping (address => uint8) public userTries; // (address => tries). If not in mapping, tries will be 0
+  mapping (address => uint) public currentToken; // mapping of the current Token that the address is using to play Nordle
+  mapping (uint => string) public tokenMetadata; // (tokenID => metadata)
+  mapping (address => uint) public lastGameTimeStamp;
 
   constructor(string memory word) ERC721("Nordle", "NDL") {
     setSecretWord(word);
@@ -25,25 +28,39 @@ contract TestContract is ERC721, Ownable {
   }
 
   function guessWord(string memory inputString) public { //Guess the word.
+    //require that length of input is == 6
     require(userTries[msg.sender] < tries, "Maxed out guesses for this Nordle");
     //Changes the metadata, hence changing the icons of the wordle thingy
     //Only add a new row when after each guess to save on gas
+    
+    if (lastGameTimeStamp[msg.sender] < currentGameTimeStamp) { //Should work if it is a brand new player
+      userTries[msg.sender] = 1;
+      tokenIndex += 1;
+      currentToken[msg.sender] = tokenIndex;
+    }
 
     uint8[letters] memory indexStates = checkWord(bytes(inputString));
+    lastGameTimeStamp[msg.sender] = block.timestamp;
 
-     if(userTries[msg.sender] > 0) {
+     if(userTries[msg.sender] > 1) { //generate the metadata
        //Grab and edit the existing NFT's metadata
-     } else {
-        //generate the metadata
-        generateMetadata(indexStates);
+       console.log("here");
+     } else { 
+        console.log("there");
+        tokenMetadata[currentToken[msg.sender]] = generateMetadata(indexStates);
+        userTries[msg.sender] += 1;
         console.log("Generating data for first time");
+        console.log(tokenIndex);
+        _mint(msg.sender,tokenIndex);
+        tokenIndex += 1;
      }
+
   }
 
   function checkWord(bytes memory inputChars) public returns (uint8[6] memory) { // Can probably make this more efficient
     uint8[letters] memory indexStates = [0, 0, 0, 0, 0, 0]; // Three states. Incorrect = 0, Correct = 1, Somewhere in word = 2
-    mapping (bytes1 => uint16) storage charCount = secretWordCharCount;// Needed so that can use same character in multiple spots
-    
+    mapping (bytes1 => uint8) storage charCount = secretWordCharCount;// Needed so that can use same character in multiple spots
+  
     for(uint16 i = 0; i < letters ; i++) {// Check characters in inputString
       // console.logBytes1(inputChars[i]);
       // console.log(charCount[inputChars[i]]);
@@ -74,11 +91,16 @@ contract TestContract is ERC721, Ownable {
     secretWord = newSecretWord;
     secretWordCharArray = charArray;
     nordleNumber += 1;
+
+    currentGameTimeStamp = block.timestamp;
+     //could have a boolean to clear mapping
      //Reset userTries mapping
      //Reset stored data
   }
 
-  //override tokenURI(){}
+  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    return tokenMetadata[tokenId];
+  }
 
   function generateMetadata(uint8[letters] memory indexStates) private returns (string memory) {
     //Currently won't be able to add data from previous attemps
