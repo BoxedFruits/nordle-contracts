@@ -23,3 +23,6 @@ module.exports = {
     }
   }
 };
+
+
+//npx hardhat verify --network rinkeby DEPLOYED_CONTRACT_ADDRESS args...

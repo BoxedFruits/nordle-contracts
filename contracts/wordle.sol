@@ -19,6 +19,7 @@ contract TestContract is ERC721, Ownable {
   mapping (bytes1 => uint8) public secretWordCharCount; // Keep count of chars
   mapping (address => uint8) public userTries; // (address => tries). If not in mapping, tries will be 0
   mapping (address => uint) public currentToken; // mapping of the current Token that the address is using to play Nordle
+  mapping (uint => string[]) public tokenRowEmojis; // (tokenID => metadata)`
   mapping (uint => string) public tokenMetadata; // (tokenID => metadata)
   mapping (address => uint) public lastGameTimeStamp;
 
@@ -40,16 +41,23 @@ contract TestContract is ERC721, Ownable {
 
     uint8[letters] memory indexStates = checkWord(bytes(inputString));
     lastGameTimeStamp[msg.sender] = block.timestamp;
+      console.log(userTries[msg.sender]);
 
-     if(userTries[msg.sender] > 1) { //generate the metadata
+
+     if(userTries[msg.sender] >= 1) { //generate the metadata
         //Grab and edit the existing NFT's metadata
         console.log("Guess again");
-        tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateMetadata(indexStates)));
-     } else { 
-        tokenMetadata[currentToken[msg.sender]] = generateMetadata(indexStates);
-        userTries[msg.sender] += 1;
+        // tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateMetadata(indexStates)));
+        // tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateRowEmojis(indexStates)));
+        tokenRowEmojis[currentToken[msg.sender]].push(generateRowEmojis(indexStates));
+        tokenMetadata[currentToken[msg.sender]] = generateMetadata(tokenRowEmojis[currentToken[msg.sender]]);
+     } else {
         console.log("Generating data for first time");
-        // console.log(tokenIndex);
+        // tokenMetadata[currentToken[msg.sender]] = generateMetadata(indexStates);
+        tokenRowEmojis[currentToken[msg.sender]].push(generateRowEmojis(indexStates));
+        tokenMetadata[currentToken[msg.sender]] = generateMetadata(tokenRowEmojis[currentToken[msg.sender]]);
+        userTries[msg.sender] += 1;
+
         _mint(msg.sender,tokenIndex);
         tokenIndex += 1;
      }
@@ -95,7 +103,7 @@ contract TestContract is ERC721, Ownable {
     return tokenMetadata[tokenId];
   }
 
-  function generateMetadata(uint8[letters] memory indexStates) private pure returns (string memory) {
+  function generateRowEmojis(uint8[letters] memory indexStates) private view returns (string memory) {
     string memory rowEmojis;
     string memory metadata;
     string[3] memory parts;
@@ -110,20 +118,62 @@ contract TestContract is ERC721, Ownable {
       }
     }
 
+    //this should be apart of the when 
     parts[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; }</style><text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">';
     parts[1] = rowEmojis; // Should prepopulate the rest of the squares?
     parts[2] = '</text></svg>';
 
-
     string memory output = string(abi.encodePacked(parts[0], parts[1], parts[2]));
 
-    string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Emoji #' , '", "description": "Inspired by the Loot (for Adventurers) contract. This is stored completely on-chain. No third party hosting, no rug pulls.", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
+    string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
     metadata = string(abi.encodePacked('data:application/json;base64,', json));
 
     // console.log(rowEmojis);
     // console.log(metadata);
     return rowEmojis;
   }
+
+  function generateMetadata(string[] memory rowEmojis) private view returns (string memory) {
+    string[3] memory svgData;
+    string memory allEmojiHTML;
+
+    //For loop through rowEmojis. Make sure to change Y value of row
+    uint8 yAxis = 10;
+    for (uint8 i = 0; i < rowEmojis.length; i++) {
+      allEmojiHTML = string(abi.encodePacked(allEmojiHTML,'<text x="50%" y="', toString(yAxis),'%" class="base" dominant-baseline="middle" text-anchor="middle">', rowEmojis[i], '</text>'));
+      yAxis += 10;
+    }
+
+    svgData[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; }</style>';
+    svgData[1] = allEmojiHTML;
+    svgData[2] = '</svg>';
+
+    string memory metadata = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(abi.encodePacked(svgData[0],svgData[1],svgData[2]))), '"}'))));
+    metadata = string(abi.encodePacked('data:application/json;base64,', metadata));
+
+    return metadata;
+  }
+
+  function toString(uint256 value) internal pure returns (string memory) {
+  // Inspired by OraclizeAPI's implementation - MIT license
+  // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
+    if (value == 0) {
+        return "0";
+    }
+    uint256 temp = value;
+    uint256 digits;
+    while (temp != 0) {
+        digits++;
+        temp /= 10;
+    }
+    bytes memory buffer = new bytes(digits);
+    while (value != 0) {
+        digits -= 1;
+        buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+        value /= 10;
+    }
+    return string(buffer);
+}
 }
 
 
