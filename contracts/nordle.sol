@@ -16,14 +16,14 @@ contract TestContract is ERC721, Ownable {
   uint256 public tokenIndex = 0;
   uint public currentGameTimeStamp; //!!!! This might be exploitable?
 
-  mapping (bytes1 => uint8) public secretWordCharCount; // Keep count of chars
+  mapping (bytes1 => uint8) private secretWordCharCount; // Keep count of chars
   mapping (address => uint8) public userTries; // (address => tries). If not in mapping, tries will be 0
   mapping (address => uint) public currentToken; // mapping of the current Token that the address is using to play Nordle
-  mapping (uint => string[]) public tokenRowEmojis; // (tokenID => metadata)`
-  mapping (uint => string) public tokenMetadata; // (tokenID => metadata)
+  mapping (uint => string[]) private tokenRowEmojis; // (tokenID => metadata)`
+  mapping (uint => string) private tokenMetadata; // (tokenID => metadata)
   mapping (address => uint) public lastGameTimeStamp;
 
-  constructor(string memory word) ERC721("Nordle", "NDL") {
+  constructor(string memory word) ERC721("Nordle", "2NDL") {
     setSecretWord(word);
     console.log("hello world");
   }
@@ -119,14 +119,13 @@ contract TestContract is ERC721, Ownable {
     }
 
     //this should be apart of the when 
-    parts[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; }</style><text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">';
-    parts[1] = rowEmojis; // Should prepopulate the rest of the squares?
-    parts[2] = '</text></svg>';
+    // parts[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; } .header{ font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;  }</style><text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">';
+    // parts[1] = rowEmojis; // Should prepopulate the rest of the squares?
+    // parts[2] = '</text></svg>';
 
-    string memory output = string(abi.encodePacked(parts[0], parts[1], parts[2]));
-
-    string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
-    metadata = string(abi.encodePacked('data:application/json;base64,', json));
+    // string memory output = string(abi.encodePacked(parts[0], parts[1], parts[2]));
+    // string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
+    // metadata = string(abi.encodePacked('data:application/json;base64,', json));
 
     // console.log(rowEmojis);
     // console.log(metadata);
@@ -134,21 +133,22 @@ contract TestContract is ERC721, Ownable {
   }
 
   function generateMetadata(string[] memory rowEmojis) private view returns (string memory) {
-    string[3] memory svgData;
+    string[4] memory svgData;
     string memory allEmojiHTML;
-
-    //For loop through rowEmojis. Make sure to change Y value of row
-    uint8 yAxis = 10;
+    string memory header = '<text x="50%" y="10%" id="header" dominant-baseline="middle" text-anchor="middle">Nordle</text>';
+    
+    uint8 yAxis = 18;
     for (uint8 i = 0; i < rowEmojis.length; i++) {
       allEmojiHTML = string(abi.encodePacked(allEmojiHTML,'<text x="50%" y="', toString(yAxis),'%" class="base" dominant-baseline="middle" text-anchor="middle">', rowEmojis[i], '</text>'));
       yAxis += 10;
     }
 
-    svgData[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; }</style>';
-    svgData[1] = allEmojiHTML;
-    svgData[2] = '</svg>';
-
-    string memory metadata = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(abi.encodePacked(svgData[0],svgData[1],svgData[2]))), '"}'))));
+    svgData[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; } .header{ font-size: 34px; font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;  }</style>';
+    svgData[1] = header;
+    svgData[2] = allEmojiHTML;
+    svgData[3] = '</svg>';
+    console.log(toString(nordleNumber));
+    string memory metadata = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(abi.encodePacked(svgData[0],svgData[1],svgData[2], svgData[3]))),'","attributes": [{ " trait_type " : "Nordle #","value":"',toString(nordleNumber),'"}, { " trait_type ": "User Tries","value":"', toString(userTries[msg.sender]),'"}]}'))));
     metadata = string(abi.encodePacked('data:application/json;base64,', metadata));
 
     return metadata;
