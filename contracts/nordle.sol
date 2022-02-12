@@ -83,6 +83,10 @@ contract TestContract is ERC721, Ownable {
         // console.log(indexStates[i]);
     }
 
+    if (correctLetters - 1 == maxLetters) { // Solved! Make sure user doesn't keep guessing
+      userTries[msg.sender] = 6;
+    }
+
     return indexStates;
   }
 
