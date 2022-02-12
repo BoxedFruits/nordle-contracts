@@ -48,14 +48,11 @@ contract TestContract is ERC721, Ownable {
      if(userTries[msg.sender] >= 1) { //generate the metadata
         //Grab and edit the existing NFT's metadata
         console.log("Guess again");
-        // tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateMetadata(indexStates)));
-        // tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateRowEmojis(indexStates)));
         tokenRowEmojis[currentToken[msg.sender]].push(generateRowEmojis(indexStates));
         tokenMetadata[currentToken[msg.sender]] = generateMetadata(tokenRowEmojis[currentToken[msg.sender]]);
         userTries[msg.sender] += 1;
      } else {
         console.log("Generating data for first time");
-        // tokenMetadata[currentToken[msg.sender]] = generateMetadata(indexStates);
         tokenRowEmojis[currentToken[msg.sender]].push(generateRowEmojis(indexStates));
         tokenMetadata[currentToken[msg.sender]] = generateMetadata(tokenRowEmojis[currentToken[msg.sender]]);
         userTries[msg.sender] += 1;
@@ -125,17 +122,6 @@ contract TestContract is ERC721, Ownable {
       }
     }
 
-    //this should be apart of the when 
-    // parts[0] = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 18px; } .header{ font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;  }</style><text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">';
-    // parts[1] = rowEmojis; // Should prepopulate the rest of the squares?
-    // parts[2] = '</text></svg>';
-
-    // string memory output = string(abi.encodePacked(parts[0], parts[1], parts[2]));
-    // string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
-    // metadata = string(abi.encodePacked('data:application/json;base64,', json));
-
-    // console.log(rowEmojis);
-    // console.log(metadata);
     return rowEmojis;
   }
 
