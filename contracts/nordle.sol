@@ -10,8 +10,8 @@ import "hardhat/console.sol";
 contract TestContract is ERC721, Ownable {
   string secretWord;
   bytes secretWordCharArray;
-  uint8 private constant letters = 6;
-  uint8 private constant tries = 6;
+  uint8 private constant maxLetters = 6;
+  uint8 private constant maxTries = 6;
   uint8 public nordleNumber = 0;
   uint256 public tokenIndex = 0;
   uint public currentGameTimeStamp; //!!!! This might be exploitable?
@@ -30,7 +30,7 @@ contract TestContract is ERC721, Ownable {
 
   function guessWord(string memory inputString) public { //Guess the word.
     //require that length of input is == 6
-    require(userTries[msg.sender] < tries, "Maxed out guesses for this Nordle");
+    require(userTries[msg.sender] < maxTries, "Maxed out guesses for this Nordle");
     
     // If new Nordle starts, reset user's tries and mint new NFT
     if (lastGameTimeStamp[msg.sender] < currentGameTimeStamp) { //Should work if it is a brand new player
@@ -39,7 +39,7 @@ contract TestContract is ERC721, Ownable {
       // currentToken[msg.sender] = tokenIndex;
     }
 
-    uint8[letters] memory indexStates = checkWord(bytes(inputString));
+    uint8[maxLetters] memory indexStates = checkWord(bytes(inputString));
     lastGameTimeStamp[msg.sender] = block.timestamp;
       console.log(userTries[msg.sender]);
 
@@ -64,17 +64,18 @@ contract TestContract is ERC721, Ownable {
     console.log(tokenMetadata[currentToken[msg.sender]]);
   }
 
-  function checkWord(bytes memory inputChars) public returns (uint8[6] memory) { // Can probably make this more efficient
-    uint8[letters] memory indexStates = [0, 0, 0, 0, 0, 0]; // Three states. Incorrect = 0, Correct = 1, Somewhere in word = 2
+  function checkWord(bytes memory inputChars) private returns (uint8[6] memory) { // Can probably make this more efficient
+    uint8[maxLetters] memory indexStates = [0, 0, 0, 0, 0, 0]; // Three states. Incorrect = 0, Correct = 1, Somewhere in word = 2
     mapping (bytes1 => uint8) storage charCount = secretWordCharCount;// Needed so that can use same character in multiple spots
-  
-    for(uint16 i = 0; i < letters ; i++) {// Check characters in inputString
+    uint8 correctLetters = 0;
+    for(uint16 i = 0; i < maxLetters ; i++) {// Check characters in inputString
       if (charCount[inputChars[i]] == 0){// Char is not in array. prevent underflow
         
       } else if (secretWordCharArray[i] == inputChars[i]) { // Char is in the correct position
         indexStates[i] = 1;
         charCount[inputChars[i]] -= 1;
         // console.logBytes1(inputChars[i]);
+        correctLetters += 1;
       } else if (charCount[inputChars[i]] > 0) { // Char is somewhere in the word
         indexStates[i] = 2;
         charCount[inputChars[i]] -= 1;
@@ -87,8 +88,8 @@ contract TestContract is ERC721, Ownable {
 
   function setSecretWord(string memory newSecretWord) public onlyOwner {
     bytes memory charArray = bytes(newSecretWord); //Convert string to byte/char array of ascii hex codes
-
-    for(uint16 i = 0; i < letters ; i++) {
+    require(charArray.length == maxLetters, 'The new secret word does not have the correct maxLetters');
+    for(uint16 i = 0; i < maxLetters ; i++) {
         secretWordCharCount[charArray[i]] += 1; //Have to increment because if a key is not defined in a mapping it has a default value of 0
     }
 
@@ -103,12 +104,12 @@ contract TestContract is ERC721, Ownable {
     return tokenMetadata[tokenId];
   }
 
-  function generateRowEmojis(uint8[letters] memory indexStates) private view returns (string memory) {
+  function generateRowEmojis(uint8[maxLetters] memory indexStates) private view returns (string memory) {
     string memory rowEmojis;
     string memory metadata;
     string[3] memory parts;
 
-    for (uint16 i = 0; i < letters; i++ ) {
+    for (uint16 i = 0; i < maxLetters; i++ ) {
       if (indexStates[i] == 0) { //Incorrect
           rowEmojis = string(abi.encodePacked(rowEmojis,  unicode"⬛"));
       } else if (indexStates[i] == 1) { //Correct
