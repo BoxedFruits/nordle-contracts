@@ -11,7 +11,7 @@ contract TestContract is ERC721, Ownable {
   string secretWord;
   bytes secretWordCharArray;
   uint8 private constant maxLetters = 6;
-  uint8 private constant maxTries = 6;
+  uint8 public constant maxTries = 6;
   uint8 public nordleNumber = 0;
   uint256 public tokenIndex = 0;
   uint public currentGameTimeStamp; //!!!! This might be exploitable?
@@ -19,7 +19,7 @@ contract TestContract is ERC721, Ownable {
   mapping (bytes1 => uint8) private secretWordCharCount; // Keep count of chars
   mapping (address => uint8) public userTries; // (address => tries). If not in mapping, tries will be 0
   mapping (address => uint) public currentToken; // mapping of the current Token that the address is using to play Nordle
-  mapping (uint => string[]) private tokenRowEmojis; // (tokenID => metadata)`
+  mapping (uint => string[]) public tokenRowEmojis; // (tokenID => metadata)`
   mapping (uint => string) private tokenMetadata; // (tokenID => metadata)
   mapping (address => uint) public lastGameTimeStamp;
 
@@ -29,8 +29,9 @@ contract TestContract is ERC721, Ownable {
   }
 
   function guessWord(string memory inputString) public { //Guess the word.
+  console.log(msg.sender);
     //require that length of input is == 6
-    require(userTries[msg.sender] < maxTries, "Maxed out guesses for this Nordle");
+    require(userTries[msg.sender] < maxTries, "Maxed out guesses for this Nordle or already solved it!");
     
     // If new Nordle starts, reset user's tries and mint new NFT
     if (lastGameTimeStamp[msg.sender] < currentGameTimeStamp) { //Should work if it is a brand new player
@@ -51,6 +52,7 @@ contract TestContract is ERC721, Ownable {
         // tokenMetadata[currentToken[msg.sender]] = string(abi.encodePacked(tokenMetadata[currentToken[msg.sender]], '\n' , generateRowEmojis(indexStates)));
         tokenRowEmojis[currentToken[msg.sender]].push(generateRowEmojis(indexStates));
         tokenMetadata[currentToken[msg.sender]] = generateMetadata(tokenRowEmojis[currentToken[msg.sender]]);
+        userTries[msg.sender] += 1;
      } else {
         console.log("Generating data for first time");
         // tokenMetadata[currentToken[msg.sender]] = generateMetadata(indexStates);
@@ -61,7 +63,7 @@ contract TestContract is ERC721, Ownable {
         _mint(msg.sender,tokenIndex);
         tokenIndex += 1;
      }
-    console.log(tokenMetadata[currentToken[msg.sender]]);
+    // console.log(tokenMetadata[currentToken[msg.sender]]);
   }
 
   function checkWord(bytes memory inputChars) private returns (uint8[6] memory) { // Can probably make this more efficient
@@ -83,8 +85,8 @@ contract TestContract is ERC721, Ownable {
         // console.log(indexStates[i]);
     }
 
-    if (correctLetters - 1 == maxLetters) { // Solved! Make sure user doesn't keep guessing
-      userTries[msg.sender] = 6;
+    if (correctLetters > 0 && correctLetters - 1 == maxLetters) { // Solved! Make sure user doesn't keep guessing
+      userTries[msg.sender] = maxTries;
     }
 
     return indexStates;
@@ -152,7 +154,7 @@ contract TestContract is ERC721, Ownable {
     svgData[1] = header;
     svgData[2] = allEmojiHTML;
     svgData[3] = '</svg>';
-    console.log(toString(nordleNumber));
+    // console.log(toString(nordleNumber));
     string memory metadata = Base64.encode(bytes(string(abi.encodePacked('{"name": "Nordle #' , toString(nordleNumber) ,'","description": "User is on try # ', toString(userTries[msg.sender]) ,'. Inspired by Wordle. Should anyone actually use this? No. I thought it would be a fun project", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(abi.encodePacked(svgData[0],svgData[1],svgData[2], svgData[3]))),'","attributes": [{ " trait_type " : "Nordle #","value":"',toString(nordleNumber),'"}, { " trait_type ": "User Tries","value":"', toString(userTries[msg.sender]),'"}]}'))));
     metadata = string(abi.encodePacked('data:application/json;base64,', metadata));
 
