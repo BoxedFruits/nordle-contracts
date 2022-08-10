@@ -29,12 +29,12 @@ describe("Nordle", () => {
   });
 
   it("should not allow the user to play the game if they solved the Nordle", async () => {
-    await contract.guessWord("secretWord");
+    await contract.guessWord(secretWord);
 
     expect(contract.guessWord("AAAAAA")).to.revertedWith(Error, 'Maxed out guesses for this Nordle or already solved it!');
   });
 
-  it("should reset the address's tries if a new game starts", async () => {
+  it("should reset the address's tries if a new game starts and change their currentToken", async () => {
     const tries = 3;
 
     for (let i = 0; i < tries; i++) {
@@ -48,6 +48,7 @@ describe("Nordle", () => {
     await contract.setSecretWord("UUUUUU");
     await contract.guessWord("AAAAAA");
     expect(await contract.userTries(owner.address)).to.equal(1); //Should be one because userTries resets once the user tries again. Then the counter is incremented
+    expect(await contract.currentToken(owner.address)).to.equal(2);
   });
 
   describe("Validation rowEmojis", () => {
@@ -61,7 +62,7 @@ describe("Nordle", () => {
       expect(await contract.tokenRowEmojis(currentTokenId, 0)).to.equal("⬛⬛⬛⬛⬛⬛");
     });
 
-    it("show a some 🟨 of all the letters are somewhere in the word", async() => {
+    it("show a 🟨 for all the letters that are somewhere in the word", async() => {
       await contract.guessWord("PPPPPA");
 
       const [owner] = await ethers.getSigners();
