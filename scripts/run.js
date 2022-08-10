@@ -7,6 +7,7 @@ async function main() {
   await contract.deployed();
   console.log("Contract deployed to:", contract.address);
   await contract.guessWord("ABCDEF");
+  await contract.guessWord("DBDDDD");
 }
 
 main()
